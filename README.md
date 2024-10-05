@@ -1,4 +1,4 @@
-# real-estate-manager
+# real-estate-api
 App for connecting clients and agents adding automation to real estate transactions
 
 ## Python API
