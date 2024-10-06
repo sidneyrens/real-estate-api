@@ -3,43 +3,55 @@ from flask_restful import Api, Resource
 from werkzeug.utils import secure_filename
 from flask_cors import CORS
 import os
+import logging
 
 app = Flask(__name__)
-CORS(app)
+logging.basicConfig(level=logging.DEBUG)
+
+CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 api = Api(app)
 
 UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'txt', 'pdf'}
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 def allowed_file(filename):
     return '.' in filename and \
-            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 class FileUpload(Resource):
     def post(self):
-        if 'file' not in request.files:
-            return jsonify({'error': 'No file part'})
+        app.logger.debug("Received POST request for /upload")
+        app.logger.debug(f"Request Files: {request.files}")
+        app.logger.debug(f"Request Form: {request.form}")
         
-        file = request.files['file']
-        
-        if file.filename == '':
-            return jsonify({'error': 'No selected file'})
-        
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(file_path)
+        try:
+            if 'file' not in request.files:
+                app.logger.error("No file part in the request")
+                return {'error': 'No file part'}, 400
             
-            # Here you can add your file analysis logic
-            # For now, we'll just return a success message
-            return jsonify({'message': 'File uploaded successfully', 'filename': filename}), 200
-        
-        return jsonify({'error': 'File type not allowed'}), 400
+            file = request.files['file']
+            
+            if file.filename == '':
+                app.logger.error("No selected file")
+                return {'error': 'No selected file'}, 400
+            
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                file.save(file_path)
+                app.logger.info(f"File saved successfully: {file_path}")
+                return {'message': 'File uploaded successfully', 'filename': filename}, 200
+            else:
+                app.logger.error("File type not allowed")
+                return {'error': 'File type not allowed'}, 400
+        except Exception as e:
+            app.logger.exception("An error occurred during file upload")
+            return {'error': str(e)}, 500
 
 api.add_resource(FileUpload, '/upload')
 
 if __name__ == '__main__':
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    app.run(debug=True)
+    app.run(debug=True, host='localhost', port=5001)
