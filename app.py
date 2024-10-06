@@ -3,7 +3,9 @@ from flask_restful import Api, Resource
 from werkzeug.utils import secure_filename
 from flask_cors import CORS
 import os
+import sys
 import logging
+import unittest
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.DEBUG)
@@ -54,4 +56,10 @@ api.add_resource(FileUpload, '/upload')
 
 if __name__ == '__main__':
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    app.run(debug=True, host='localhost', port=5001)
+    if len(sys.argv) > 1 and sys.argv[1] == 'test':
+        test_loader = unittest.TestLoader()
+        test_suite = test_loader.discover('tests', pattern='test_*.py')
+        test_runner = unittest.TextTestRunner(verbosity=2)
+        test_runner.run(test_suite)
+    else:
+        app.run(debug=True, host='localhost', port=5001)
